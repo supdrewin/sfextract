@@ -55,18 +55,26 @@ def xor_two_bytes(a, b):
     return bytes(map(xor, long, cycle(short)))
 
 
-def get_decompressor(compression: COMPRESSION):
+def lzma2_decompress(data):
+    # First byte contain the prop for the filters
+    filters = lzma._decode_filter_properties(lzma.FILTER_LZMA2, data[0:1])
+    decompressor = lzma.LZMADecompressor(lzma.FORMAT_RAW, filters=[filters])
+    # Next 8 bytes contain the expected decompressed size
+    return decompressor.decompress(data[9:])
+
+
+def get_decompress(compression: COMPRESSION):
     match compression:
         case COMPRESSION.UNKNOWN:
             raise Exception("Unknown compresssion found")
         case COMPRESSION.NONE:
-            return type("NoneDecompressor", (object,), {"decompress": lambda x: x})
+            return lambda x: x
         case COMPRESSION.PKWARE:
-            return type("PKWAREDecompressor", (object,), {"decompress": lambda x: pwexplode.explode(x)})
+            return pwexplode.explode
         case COMPRESSION.LZMA:
-            return lzma.LZMADecompressor()
+            return lzma.decompress
         case COMPRESSION.LZMA2:
-            raise Exception("No support for LZMA2 yet")
+            return lzma2_decompress
         case _:
             raise Exception("No valid compression found")
 

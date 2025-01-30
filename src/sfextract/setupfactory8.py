@@ -13,7 +13,7 @@ from sfextract import (
     SetupFactoryExtractor,
     SFFileEntry,
     TruncatedFileError,
-    get_decompressor,
+    get_decompress,
     xor_two_bytes,
 )
 
@@ -280,7 +280,7 @@ class SetupFactory8Extractor(SetupFactoryExtractor):
             )
 
             compressed_data = self.overlay.read(nCompSize)
-            decompressed_data = get_decompressor(self.files[-1].compression).decompress(compressed_data)
+            decompressed_data = get_decompress(self.files[-1].compression)(compressed_data)
             os.makedirs(os.path.dirname(target_file), exist_ok=True)
             with open(target_file, "wb") as f:
                 f.write(decompressed_data)
@@ -307,9 +307,9 @@ class SetupFactory8Extractor(SetupFactoryExtractor):
             is_script = name == SCRIPT_FILE_NAME
             compression = DetectCompression(self.overlay)
             compressed_data = self.overlay.read(file_size)
-            decompressed_data = get_decompressor(compression).decompress(compressed_data)
+            decompressed_data = get_decompress(compression)(compressed_data)
             if file_crc and file_crc != zlib.crc32(decompressed_data):
-                raise Exception(f"Bad CRC checksum on {name}")
+                raise Exception(f"Bad CRC checksum on {name.decode('utf-8', errors='ignore')}")
             target_file = os.path.join(output_location, name.decode("utf-8", errors="ignore"))
             with open(target_file, "wb") as f:
                 f.write(decompressed_data)

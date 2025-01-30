@@ -12,7 +12,7 @@ from sfextract import (
     SetupFactoryExtractor,
     SFFileEntry,
     TruncatedFileError,
-    get_decompressor,
+    get_decompress,
     xor_two_bytes,
 )
 
@@ -87,7 +87,7 @@ class SetupFactory7Extractor(SetupFactoryExtractor):
         super().__init__(version)
         self.overlay = overlay
         self.compression = COMPRESSION.PKWARE
-        self.decompressor = get_decompressor(self.compression)
+        self.decompress = get_decompress(self.compression)
 
     def ParseScript(self, script: SFFileEntry, output_location):
         with open(script.local_path, "rb") as f:
@@ -172,7 +172,7 @@ class SetupFactory7Extractor(SetupFactoryExtractor):
             )
 
             compressed_data = self.overlay.read(nCompSize)
-            decompressed_data = get_decompressor(self.files[-1].compression).decompress(compressed_data)
+            decompressed_data = get_decompress(self.files[-1].compression)(compressed_data)
             os.makedirs(os.path.dirname(target_file), exist_ok=True)
             with open(target_file, "wb") as f:
                 f.write(decompressed_data)
@@ -195,10 +195,10 @@ class SetupFactory7Extractor(SetupFactoryExtractor):
             file_crc = struct.unpack("I", self.overlay.read(4))[0]
             is_script = name == SCRIPT_FILE_NAME
             compressed_data = self.overlay.read(file_size)
-            decompressed_data = self.decompressor.decompress(compressed_data)
+            decompressed_data = self.decompress(compressed_data)
             # CRCs are actually not validated in the original code, but we can try to validate them here
             if file_crc and file_crc != zlib.crc32(decompressed_data):
-                raise Exception(f"Bad CRC checksum on {name}")
+                raise Exception(f"Bad CRC checksum on {name.decode('utf-8', errors='ignore')}")
             target_file = os.path.join(output_location, name.decode("utf-8", errors="ignore"))
             with open(target_file, "wb") as f:
                 f.write(decompressed_data)
