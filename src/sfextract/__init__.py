@@ -7,7 +7,7 @@ from itertools import cycle
 from operator import xor
 from typing import List
 
-from sfextract import pwexplode
+from sfextract import lzma2, pwexplode
 
 __version__ = importlib.metadata.version(__package__ or __name__)
 
@@ -66,7 +66,7 @@ def get_decompressor(compression: COMPRESSION):
         case COMPRESSION.LZMA:
             return lzma.LZMADecompressor()
         case COMPRESSION.LZMA2:
-            raise Exception("No support for LZMA2 yet")
+            return lzma2
         case _:
             raise Exception("No valid compression found")
 

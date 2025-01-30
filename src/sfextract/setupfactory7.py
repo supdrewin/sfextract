@@ -198,7 +198,7 @@ class SetupFactory7Extractor(SetupFactoryExtractor):
             decompressed_data = self.decompressor.decompress(compressed_data)
             # CRCs are actually not validated in the original code, but we can try to validate them here
             if file_crc and file_crc != zlib.crc32(decompressed_data):
-                raise Exception(f"Bad CRC checksum on {name}")
+                raise Exception(f"Bad CRC checksum on {name.decode('utf-8', errors='ignore')}")
             target_file = os.path.join(output_location, name.decode("utf-8", errors="ignore"))
             with open(target_file, "wb") as f:
                 f.write(decompressed_data)

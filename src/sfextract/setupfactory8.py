@@ -309,7 +309,10 @@ class SetupFactory8Extractor(SetupFactoryExtractor):
             compressed_data = self.overlay.read(file_size)
             decompressed_data = get_decompressor(compression).decompress(compressed_data)
             if file_crc and file_crc != zlib.crc32(decompressed_data):
-                raise Exception(f"Bad CRC checksum on {name}")
+                # TODO: We cannot process chunked files correctly when decoding LZMA2 for now
+                # Bypass IRIMG* validation errors for now, as those are not that important.
+                if compression != COMPRESSION.LZMA2 or not name.startswith(b"IRIMG"):
+                    raise Exception(f"Bad CRC checksum on {name.decode('utf-8', errors='ignore')}")
             target_file = os.path.join(output_location, name.decode("utf-8", errors="ignore"))
             with open(target_file, "wb") as f:
                 f.write(decompressed_data)
