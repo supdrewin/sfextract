@@ -12,7 +12,7 @@ from sfextract import (
     SetupFactoryExtractor,
     SFFileEntry,
     TruncatedFileError,
-    get_decompress,
+    decompress,
     xor_two_bytes,
 )
 
@@ -67,8 +67,8 @@ def ReadSpecialFile(overlay, output_location, filename, is_xored):
                 f"Special File {filename} expected to be {file_size} bytes but was only {len(data)} bytes."
             )
         if is_xored:
-            xor_key = xor_two_bytes(data[:2], b"MZ")
-            data = xor_two_bytes(data, xor_key)
+            xor_key = xor_two_bytes(data[:2], b"MZ")  # Should always be \x07
+            data = xor_two_bytes(data[:2000], xor_key) + data[2000:]
         f.write(data)
 
     return SFFileEntry(
@@ -87,7 +87,6 @@ class SetupFactory7Extractor(SetupFactoryExtractor):
         super().__init__(version)
         self.overlay = overlay
         self.compression = COMPRESSION.PKWARE
-        self.decompress = get_decompress(self.compression)
 
     def ParseScript(self, script: SFFileEntry, output_location):
         with open(script.local_path, "rb") as f:
@@ -153,6 +152,8 @@ class SetupFactory7Extractor(SetupFactoryExtractor):
             nCrc = struct.unpack("I", script_data.read(4))[0]
             script_data.seek(8, os.SEEK_CUR)
 
+            file_compression = COMPRESSION.NONE if nIsCompressed == 0 else script.compression
+
             target_name = os.path.join(
                 *PureWindowsPath(strDestDir.decode("utf-8", errors="ignore")).parts,
                 strBaseName.decode("utf-8", errors="ignore"),
@@ -165,14 +166,14 @@ class SetupFactory7Extractor(SetupFactoryExtractor):
                     local_path=target_file,
                     unpacked_size=nDecompSize,
                     packed_size=nCompSize,
-                    compression=COMPRESSION.NONE if nIsCompressed == 0 else script.compression,
+                    compression=file_compression,
                     crc=nCrc,
                     attributes=origAttr if useOrigAttr else forcedAttr,
                 )
             )
 
             compressed_data = self.overlay.read(nCompSize)
-            decompressed_data = get_decompress(self.files[-1].compression)(compressed_data)
+            decompressed_data = decompress(file_compression, compressed_data)
             os.makedirs(os.path.dirname(target_file), exist_ok=True)
             with open(target_file, "wb") as f:
                 f.write(decompressed_data)
@@ -195,7 +196,7 @@ class SetupFactory7Extractor(SetupFactoryExtractor):
             file_crc = struct.unpack("I", self.overlay.read(4))[0]
             is_script = name == SCRIPT_FILE_NAME
             compressed_data = self.overlay.read(file_size)
-            decompressed_data = self.decompress(compressed_data)
+            decompressed_data = decompress(self.compression, compressed_data)
             # CRCs are actually not validated in the original code, but we can try to validate them here
             if file_crc and file_crc != zlib.crc32(decompressed_data):
                 raise Exception(f"Bad CRC checksum on {name.decode('utf-8', errors='ignore')}")

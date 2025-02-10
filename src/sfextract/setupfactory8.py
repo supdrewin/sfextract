@@ -13,7 +13,7 @@ from sfextract import (
     SetupFactoryExtractor,
     SFFileEntry,
     TruncatedFileError,
-    get_decompress,
+    decompress,
     xor_two_bytes,
 )
 
@@ -168,8 +168,8 @@ def ReadSpecialFile(overlay, output_location, filename, is_xored):
                 f"Special File {filename} expected to be {file_size} bytes but was only {len(data)} bytes."
             )
         if is_xored:
-            xor_key = xor_two_bytes(data[:2], b"MZ")
-            data = xor_two_bytes(data, xor_key)
+            xor_key = xor_two_bytes(data[:2], b"MZ")  # Should always be \x07
+            data = xor_two_bytes(data[:2000], xor_key) + data[2000:]
         f.write(data)
 
     return SFFileEntry(
@@ -259,6 +259,8 @@ class SetupFactory8Extractor(SetupFactoryExtractor):
             nCrc = struct.unpack("I", script_data.read(4))[0]
             script_data.seek(8, os.SEEK_CUR)
 
+            file_compression = COMPRESSION.NONE if nIsCompressed == 0 else script.compression
+
             target_name = os.path.join(
                 *PureWindowsPath(strDestDir.decode("utf-8", errors="ignore")).parts,
                 strBaseName.decode("utf-8", errors="ignore"),
@@ -271,7 +273,7 @@ class SetupFactory8Extractor(SetupFactoryExtractor):
                     local_path=target_file,
                     unpacked_size=nDecompSize,
                     packed_size=nCompSize,
-                    compression=COMPRESSION.NONE if nIsCompressed == 0 else script.compression,
+                    compression=file_compression,
                     crc=nCrc,
                     attributes=origAttr if useOrigAttr else forcedAttr,
                     last_write_time=modTime,
@@ -280,7 +282,7 @@ class SetupFactory8Extractor(SetupFactoryExtractor):
             )
 
             compressed_data = self.overlay.read(nCompSize)
-            decompressed_data = get_decompress(self.files[-1].compression)(compressed_data)
+            decompressed_data = decompress(file_compression, compressed_data)
             os.makedirs(os.path.dirname(target_file), exist_ok=True)
             with open(target_file, "wb") as f:
                 f.write(decompressed_data)
@@ -307,7 +309,7 @@ class SetupFactory8Extractor(SetupFactoryExtractor):
             is_script = name == SCRIPT_FILE_NAME
             compression = DetectCompression(self.overlay)
             compressed_data = self.overlay.read(file_size)
-            decompressed_data = get_decompress(compression)(compressed_data)
+            decompressed_data = decompress(compression, compressed_data)
             if file_crc and file_crc != zlib.crc32(decompressed_data):
                 raise Exception(f"Bad CRC checksum on {name.decode('utf-8', errors='ignore')}")
             target_file = os.path.join(output_location, name.decode("utf-8", errors="ignore"))
