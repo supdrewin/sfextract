@@ -27,4 +27,4 @@ for file in extractor.files:
 
 ## Limitations
 
-This library has the same limitations as the one it was based on. It currently only support Setup Factory 7, 8 and 9. At this moment, as opposed to SFUnpacker, this version does not support LZMA2.
+This library has the same limitations as the one it was based on. It currently only support Setup Factory 7, 8 and 9.
