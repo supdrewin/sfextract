@@ -7,7 +7,7 @@ from itertools import cycle
 from operator import xor
 from typing import List
 
-from sfextract import pwexplode
+from sfextract import blast
 
 __version__ = importlib.metadata.version(__package__ or __name__)
 
@@ -65,7 +65,7 @@ def decompress(compression: COMPRESSION, data):
         case COMPRESSION.NONE:
             return data
         case COMPRESSION.PKWARE:
-            return pwexplode.explode(data)
+            return blast.decompress(data)
         case COMPRESSION.LZMA:
             return lzma.decompress(data)
         case COMPRESSION.LZMA2:
