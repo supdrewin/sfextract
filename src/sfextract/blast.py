@@ -150,8 +150,14 @@ def decompress(compressedstring):
     literals_coded = compressedstring[0]
     dict_size = compressedstring[1]
 
-    if literals_coded > 1 or dict_size < 4 or dict_size > 6:
-        raise ValueError("Invalid header in compressed data")
+    if literals_coded > 1:
+        raise ValueError(
+            f"Invalid coded literal value in compressed header: {literals_coded} found (expected value of 0 or 1)."
+        )
+    if dict_size < 4 or dict_size > 6:
+        raise ValueError(
+            f"Invalid dictionary size in compressed header: {dict_size} found (expected value of 4, 5, or 6)."
+        )
 
     s = BitReader(BytesIO(compressedstring[2:]))
     output = BytesIO()
