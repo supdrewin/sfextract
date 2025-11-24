@@ -264,9 +264,11 @@ class SetupFactory8Extractor(SetupFactoryExtractor):
 
             file_compression = COMPRESSION.NONE if nIsCompressed == 0 else script.compression
 
+            try: strBaseName = strBaseName.decode("utf-8")
+            except: strBaseName = strBaseName.decode("gb18030", errors="ignore")
             target_name = os.path.join(
                 *PureWindowsPath(strDestDir.decode("utf-8", errors="ignore")).parts,
-                strBaseName.decode("utf-8", errors="ignore"),
+                strBaseName,
             )
             target_file = os.path.join(output_location, target_name)
 
